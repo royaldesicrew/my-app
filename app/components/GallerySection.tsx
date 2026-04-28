@@ -5,55 +5,48 @@ import { motion, AnimatePresence } from "framer-motion";
 import ImageReveal from "@/components/ui/image-tiles";
 import { FramerThumbnailCarousel } from "@/components/ui/framer-thumbnail-carousel";
 
-const GALLERY_CATEGORIES = [
-  {
-    id: "weddings",
-    name: "Luxury Weddings",
-    items: [
-      { id: 1, url: "https://images.unsplash.com/photo-1519741497674-611481863552?q=80&w=1000", title: "Royal Vows in Gold" },
-      { id: 2, url: "https://images.unsplash.com/photo-1511285560929-80b456fea0bc?q=80&w=1000", title: "Eternal Floral Mandap" },
-      { id: 3, url: "https://images.unsplash.com/photo-1520854221256-17451cc331bf?q=80&w=1000", title: "Grand Ballroom Waltz" },
-      { id: 4, url: "https://images.unsplash.com/photo-1469334031218-e382a71b716b?q=80&w=1000", title: "The Royal Walkway" },
-      { id: 5, url: "https://images.unsplash.com/photo-1519222970733-f546218fa6d7?q=80&w=1000", title: "Candlelight Dinner" },
-    ]
-  },
-  {
-    id: "corporate",
-    name: "Corporate Events",
-    items: [
-      { id: 1, url: "https://images.unsplash.com/photo-1511795409834-ef04bbd61622?q=80&w=1000", title: "Executive Summit 2026" },
-      { id: 2, url: "https://images.unsplash.com/photo-1505373877841-8d25f7d46678?q=80&w=1000", title: "Tech Innovation Gala" },
-      { id: 3, url: "https://images.unsplash.com/photo-1540575467063-178a50c2df87?q=80&w=1000", title: "Future Horizons Conference" },
-      { id: 4, url: "https://images.unsplash.com/photo-1556761175-4b46a572b786?q=80&w=1000", title: "Strategic Planning Meet" },
-      { id: 5, url: "https://images.unsplash.com/photo-1501281668745-f7f57925c3b4?q=80&w=1000", title: "Networking Under the Stars" },
-    ]
-  },
-  {
-    id: "birthdays",
-    name: "Birthday Celebrations",
-    items: [
-      { id: 1, url: "https://images.unsplash.com/photo-1530103862676-de3c9de59a9e?q=80&w=1000", title: "A Fairytale First Birthday" },
-      { id: 2, url: "https://images.unsplash.com/photo-1464349095431-e9a21285b5f3?q=80&w=1000", title: "Sweet Sixteen Sparkles" },
-      { id: 3, url: "https://images.unsplash.com/photo-1513151233558-d860c5398176?q=80&w=1000", title: "Golden Jubilee Bash" },
-      { id: 4, url: "https://images.unsplash.com/photo-1528605248644-14dd04022da1?q=80&w=1000", title: "Garden Party Joy" },
-      { id: 5, url: "https://images.unsplash.com/photo-1532712938310-34cb3982ef74?q=80&w=1000", title: "Night of Neon Lights" },
-    ]
-  },
-  {
-    id: "decor",
-    name: "Decor & Designs",
-    items: [
-      { id: 1, url: "https://images.unsplash.com/photo-1533174072545-7a4b6ad7a6c3?q=80&w=1000", title: "Velvet & Gold Accents" },
-      { id: 2, url: "https://images.unsplash.com/photo-1519225421980-715cb0215aed?q=80&w=1000", title: "Cascading Orchid Decor" },
-      { id: 3, url: "https://images.unsplash.com/photo-1522413452208-996906271a56?q=80&w=1000", title: "Modern Minimalist Chic" },
-      { id: 4, url: "https://images.unsplash.com/photo-1478146896981-b80fe463b330?q=80&w=1000", title: "Bohemian Dreamscape" },
-      { id: 5, url: "https://images.unsplash.com/photo-1469334031218-e382a71b716b?q=80&w=1000", title: "Baroque Grandeur" },
-    ]
-  }
-];
-
 export default function GallerySection() {
-  const [selectedCategory, setSelectedCategory] = useState<typeof GALLERY_CATEGORIES[0] | null>(null);
+  const [selectedCategory, setSelectedCategory] = useState<any | null>(null);
+  const [categories, setCategories] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchGalleryData = async () => {
+      try {
+        // Fetch categories first
+        const catRes = await fetch("/api/admin/gallery/categories");
+        const categoriesDataRaw = await catRes.json();
+        const categoriesData = Array.isArray(categoriesDataRaw) ? categoriesDataRaw : [];
+        
+        // Fetch all gallery items
+        const galleryRes = await fetch("/api/admin/gallery");
+        const galleryItemsRaw = await galleryRes.json();
+        const galleryItems = Array.isArray(galleryItemsRaw) ? galleryItemsRaw : [];
+
+        // Group items by category
+        const dynamicCategories = categoriesData.map((cat: any) => ({
+          id: cat._id,
+          slug: cat.slug,
+          name: cat.name,
+          items: galleryItems
+            .filter((item: any) => item.categoryId?._id === cat._id)
+            .map((item: any) => ({
+              id: item._id,
+              url: item.mediaId?.url,
+              title: item.title
+            }))
+        })).filter((cat: any) => cat.items.length > 0); 
+
+        setCategories(dynamicCategories);
+      } catch (err) {
+        console.error("Failed to fetch gallery data:", err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchGalleryData();
+  }, []);
 
   // Lock scroll and hide navbar when modal is open
   useEffect(() => {
@@ -115,16 +108,26 @@ export default function GallerySection() {
 
         {/* Categories Grid */}
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))", gap: "80px 40px", placeItems: "center" }}>
-          {GALLERY_CATEGORIES.map((category) => (
-            <ImageReveal 
-              key={category.id}
-              categoryName={category.name}
-              leftImage={category.items[0].url}
-              middleImage={category.items[1].url}
-              rightImage={category.items[2].url}
-              onClick={() => setSelectedCategory(category)}
-            />
-          ))}
+          {loading ? (
+            <div style={{ gridColumn: "1/-1", padding: "40px", color: "rgba(0,0,0,0.5)", fontFamily: "var(--font-montserrat)" }}>
+              Loading curated collections...
+            </div>
+          ) : categories.length === 0 ? (
+            <div style={{ gridColumn: "1/-1", padding: "40px", color: "rgba(0,0,0,0.5)", fontFamily: "var(--font-montserrat)" }}>
+              No gallery items found.
+            </div>
+          ) : (
+            categories.map((category) => (
+              <ImageReveal 
+                key={category.id}
+                categoryName={category.name}
+                leftImage={category.items[0]?.url}
+                middleImage={category.items[1]?.url || category.items[0]?.url}
+                rightImage={category.items[2]?.url || category.items[1]?.url || category.items[0]?.url}
+                onClick={() => setSelectedCategory(category)}
+              />
+            ))
+          )}
         </div>
       </div>
 

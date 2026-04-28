@@ -53,7 +53,7 @@ export default function Navbar() {
             ))}
           </div>
           <Link
-            href="/book"
+            href="#"
             className="px-6 py-2.5 bg-accent text-white rounded-full text-[10px] font-black tracking-widest hover:bg-foreground transition-all duration-500 shadow-lg shadow-accent/20 whitespace-nowrap"
           >
             BOOK NOW

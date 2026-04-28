@@ -7,10 +7,7 @@ import { useSearchParams } from "next/navigation";
 import Navbar1 from "@/components/ui/navbar-1";
 import Footer from "@/app/components/Footer";
 import services from "@/data/services.json";
-import packages from "@/data/packages.json";
-import venues from "@/data/venues.json";
-import caterers from "@/data/caterers.json";
-import artists from "@/data/artists.json";
+// Removed duplicate and hardcoded JSON imports
 
 const ACCENT = "#FF6B4A";
 const BG = "#FDFBF7";
@@ -109,6 +106,38 @@ export default function BookPage() {
   const searchParams = useSearchParams();
   const [form, setForm] = useState<FormData>({ name: "", email: "", phone: "", service: "", package: "", venue: "", caterer: "", artist: "", budget: 100000, guests: "", notes: "" });
   
+  // Database States
+  const [dbPackages, setDbPackages] = useState<any[]>([]);
+  const [dbVenues, setDbVenues] = useState<any[]>([]);
+  const [dbCaterers, setDbCaterers] = useState<any[]>([]);
+  const [dbArtists, setDbArtists] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchDbData = async () => {
+      try {
+        const [pRes, vRes, cRes, aRes] = await Promise.all([
+          fetch("/api/admin/packages"),
+          fetch("/api/admin/venues"),
+          fetch("/api/admin/caterers"),
+          fetch("/api/admin/artists")
+        ]);
+        const [pData, vData, cData, aData] = await Promise.all([
+          pRes.json(), vRes.json(), cRes.json(), aRes.json()
+        ]);
+        setDbPackages(Array.isArray(pData) ? pData : []);
+        setDbVenues(Array.isArray(vData) ? vData : []);
+        setDbCaterers(Array.isArray(cData) ? cData : []);
+        setDbArtists(Array.isArray(aData) ? aData : []);
+      } catch (err) {
+        console.error("Failed to fetch booking options:", err);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    fetchDbData();
+  }, []);
+  
   useEffect(() => {
     const service = searchParams.get("service");
     const pkg = searchParams.get("package");
@@ -174,11 +203,11 @@ export default function BookPage() {
     });
   };
 
-  const selectedService = services.find(s => s.id === form.service);
-  const selectedPackage = packages.find(p => p.id === form.package);
-  const selectedVenue = venues.find(v => v.id === form.venue);
-  const selectedCaterer = caterers.find(c => c.id === form.caterer);
-  const selectedArtist = artists.find(a => a.id === form.artist);
+  const selectedService = services.find(s => s.id === form.service || s.name.trim().toLowerCase() === form.service.trim().toLowerCase());
+  const selectedPackage = dbPackages.find(p => p._id === form.package || p.id === form.package || p.name.trim().toLowerCase() === form.package.trim().toLowerCase());
+  const selectedVenue = dbVenues.find(v => v._id === form.venue || v.id === form.venue || v.name.trim().toLowerCase() === form.venue.trim().toLowerCase());
+  const selectedCaterer = dbCaterers.find(c => c._id === form.caterer || c.id === form.caterer || c.name.trim().toLowerCase() === form.caterer.trim().toLowerCase());
+  const selectedArtist = dbArtists.find(a => a._id === form.artist || a.id === form.artist || a.name.trim().toLowerCase() === form.artist.trim().toLowerCase());
 
   if (isSubmitted) {
     return (
@@ -330,7 +359,7 @@ export default function BookPage() {
         {/* Step 3 — Package */}
         <div ref={sectionRefs[2]} style={{ paddingTop: 120, paddingBottom: 120 }}>
           <RevealSection id="step-3">
-            <StepThree form={form} setForm={setForm} onNext={() => scrollTo(3)} />
+            <StepThree form={form} setForm={setForm} onNext={() => scrollTo(3)} dbPackages={dbPackages} />
           </RevealSection>
         </div>
 
@@ -339,7 +368,7 @@ export default function BookPage() {
         {/* Step 4 — Venue */}
         <div ref={sectionRefs[3]} style={{ paddingTop: 120, paddingBottom: 120 }}>
           <RevealSection id="step-4">
-            <StepFour form={form} setForm={setForm} onNext={() => scrollTo(4)} />
+            <StepFour form={form} setForm={setForm} onNext={() => scrollTo(4)} dbVenues={dbVenues} />
           </RevealSection>
         </div>
 
@@ -348,7 +377,7 @@ export default function BookPage() {
         {/* Step 5 — Caterer */}
         <div ref={sectionRefs[4]} style={{ paddingTop: 120, paddingBottom: 120 }}>
           <RevealSection id="step-5">
-            <StepFive form={form} setForm={setForm} onNext={() => scrollTo(5)} />
+            <StepFive form={form} setForm={setForm} onNext={() => scrollTo(5)} dbCaterers={dbCaterers} />
           </RevealSection>
         </div>
 
@@ -357,7 +386,7 @@ export default function BookPage() {
         {/* Step 6 — Artist */}
         <div ref={sectionRefs[5]} style={{ paddingTop: 120, paddingBottom: 120 }}>
           <RevealSection id="step-6">
-            <StepSixArtist form={form} setForm={setForm} onNext={() => scrollTo(6)} />
+            <StepSixArtist form={form} setForm={setForm} onNext={() => scrollTo(6)} dbArtists={dbArtists} />
           </RevealSection>
         </div>
 
@@ -520,32 +549,33 @@ function StepTwo({ form, setForm, onNext }: { form: FormData; setForm: (f: FormD
 }
 
 /* ─── Step 3: Package ─── */
-function StepThree({ form, setForm, onNext }: { form: FormData; setForm: (f: FormData) => void; onNext: () => void }) {
+function StepThree({ form, setForm, onNext, dbPackages }: { form: FormData; setForm: (f: FormData) => void; onNext: () => void; dbPackages: any[] }) {
   return (
     <div>
       <SectionHeading step={3} total={7} label={<>Choose your <em style={{ color: ACCENT, fontStyle: "italic" }}>package</em></>} sub="Select the experience that fits your vision." />
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))", gap: 24 }}>
-        {packages.map((pkg, idx) => {
-          const selected = form.package === pkg.id;
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: 24 }}>
+        {dbPackages.map((pkg: any, idx: number) => {
+          const id = pkg._id || pkg.id;
+          const selected = form.package === id;
           const inactive = form.package && !selected;
           return (
             <motion.div
-              key={pkg.id}
+              key={id}
               initial={{ opacity: 0, y: 30 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true, margin: "-40px" }}
               transition={{ duration: 0.5, delay: idx * 0.08 }}
               whileHover={{ y: -10 }}
-              onClick={() => setForm({ ...form, package: pkg.id })}
+              onClick={() => setForm({ ...form, package: id })}
               style={{ background: selected ? FG : "#fff", border: selected ? `4px solid ${FG}` : "2px solid rgba(0,0,0,0.06)", borderRadius: 32, padding: "44px 36px", cursor: "pointer", boxShadow: selected ? "0 25px 70px rgba(0,0,0,0.25)" : "0 10px 40px rgba(0,0,0,0.04)", transition: "all 0.4s ease", position: "relative", opacity: inactive ? 0.4 : 1 }}
             >
-              {pkg.tag && <span style={{ position: "absolute", top: -14, left: "50%", transform: "translateX(-50%)", background: pkg.popular ? ACCENT : FG, color: "white", fontFamily: "var(--font-montserrat)", fontWeight: 800, fontSize: "0.6rem", letterSpacing: "0.15em", textTransform: "uppercase", padding: "8px 20px", borderRadius: 999, whiteSpace: "nowrap", boxShadow: "0 4px 12px rgba(0,0,0,0.15)" }}>{pkg.tag}</span>}
+              {pkg.isMostRequested && <span style={{ position: "absolute", top: -14, left: "50%", transform: "translateX(-50%)", background: ACCENT, color: "white", fontFamily: "var(--font-montserrat)", fontWeight: 800, fontSize: "0.6rem", letterSpacing: "0.15em", textTransform: "uppercase", padding: "8px 20px", borderRadius: 999, whiteSpace: "nowrap", boxShadow: "0 4px 12px rgba(0,0,0,0.15)" }}>Most Requested</span>}
               {selected && <div style={{ position: "absolute", top: 24, right: 24, background: ACCENT, borderRadius: "50%", width: 34, height: 34, display: "flex", alignItems: "center", justifyContent: "center" }}><Check size={18} color="white" strokeWidth={4} /></div>}
               <h4 style={{ fontFamily: "var(--font-playfair)", fontWeight: 800, fontSize: "2rem", color: selected ? "white" : FG, marginBottom: 12 }}>{pkg.name}</h4>
               <p style={{ fontFamily: "var(--font-montserrat)", fontSize: "0.9rem", color: selected ? "rgba(255,255,255,0.6)" : "rgba(0,0,0,0.5)", marginBottom: 28, lineHeight: 1.7 }}>{pkg.description}</p>
               <p style={{ fontFamily: "var(--font-playfair)", fontWeight: 700, fontSize: "1.4rem", color: selected ? ACCENT : FG, marginBottom: 28 }}>{pkg.price}</p>
               <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-                {pkg.features.slice(0, 4).map(f => (
+                {pkg.features.slice(0, 5).map((f: any) => (
                   <div key={f} style={{ display: "flex", alignItems: "center", gap: 12 }}>
                     <Check size={15} color={selected ? ACCENT : "rgba(0,0,0,0.2)"} strokeWidth={4} />
                     <span style={{ fontFamily: "var(--font-montserrat)", fontSize: "0.85rem", color: selected ? "rgba(255,255,255,0.75)" : "rgba(0,0,0,0.65)" }}>{f}</span>
@@ -572,30 +602,32 @@ function StepThree({ form, setForm, onNext }: { form: FormData; setForm: (f: For
 }
 
 /* ─── Step 4: Venue ─── */
-function StepFour({ form, setForm, onNext }: { form: FormData; setForm: (f: FormData) => void; onNext: () => void }) {
+function StepFour({ form, setForm, onNext, dbVenues }: { form: FormData; setForm: (f: FormData) => void; onNext: () => void; dbVenues: any[] }) {
   return (
     <div>
       <SectionHeading step={4} total={7} label={<>Pick your <em style={{ color: ACCENT, fontStyle: "italic" }}>venue</em></>} sub="Optional — skip if you'd like us to recommend one." />
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(340px, 1fr))", gap: 32 }}>
-        {venues.map((v, idx) => {
-          const selected = form.venue === v.id;
+        {dbVenues.map((v: any, idx: number) => {
+          const id = v._id || v.id;
+          const selected = form.venue === id;
           const inactive = form.venue && !selected;
+          const coverUrl = v.coverImageId?.url || v.coverImageUrl || v.coverImage;
           return (
             <motion.div
-              key={v.id}
+              key={id}
               initial={{ opacity: 0, y: 30 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true, margin: "-40px" }}
               transition={{ duration: 0.5, delay: idx * 0.07 }}
               whileHover={{ y: -8, scale: 1.02 }}
-              onClick={() => setForm({ ...form, venue: selected ? "" : v.id })}
+              onClick={() => setForm({ ...form, venue: selected ? "" : id })}
               style={{ position: "relative", borderRadius: 32, overflow: "hidden", cursor: "pointer", border: selected ? `4px solid ${ACCENT}` : "3px solid transparent", boxShadow: selected ? `0 20px 60px rgba(255,107,74,0.35)` : "0 8px 30px rgba(0,0,0,0.08)", transition: "all 0.4s ease", aspectRatio: "16/10", opacity: inactive ? 0.4 : 1 }}
             >
-              <img src={v.coverImage} alt={v.name} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+              <img src={coverUrl} alt={v.name} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
               <div style={{ position: "absolute", inset: 0, background: selected ? "rgba(255,107,74,0.4)" : "linear-gradient(to top, rgba(0,0,0,0.85) 0%, transparent 70%)" }} />
               {selected && <div style={{ position: "absolute", top: 16, right: 16, background: ACCENT, borderRadius: "50%", width: 36, height: 36, display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 4px 12px rgba(0,0,0,0.2)" }}><Check size={18} color="white" strokeWidth={4} /></div>}
               <div style={{ position: "absolute", bottom: 0, padding: "28px 32px" }}>
-                <p style={{ fontFamily: "var(--font-montserrat)", fontWeight: 700, fontSize: "0.65rem", letterSpacing: "0.15em", color: ACCENT, textTransform: "uppercase", marginBottom: 6 }}>{v.tag}</p>
+                <p style={{ fontFamily: "var(--font-montserrat)", fontWeight: 700, fontSize: "0.65rem", letterSpacing: "0.15em", color: ACCENT, textTransform: "uppercase", marginBottom: 6 }}>{v.location || v.category || "Premium Venue"}</p>
                 <h4 style={{ fontFamily: "var(--font-playfair)", fontWeight: 700, fontSize: "1.3rem", color: "white" }}>{v.name}</h4>
               </div>
             </motion.div>
@@ -615,30 +647,32 @@ function StepFour({ form, setForm, onNext }: { form: FormData; setForm: (f: Form
 }
 
 /* ─── Step 5: Caterer ─── */
-function StepFive({ form, setForm, onNext }: { form: FormData; setForm: (f: FormData) => void; onNext: () => void }) {
+function StepFive({ form, setForm, onNext, dbCaterers }: { form: FormData; setForm: (f: FormData) => void; onNext: () => void; dbCaterers: any[] }) {
   return (
     <div>
       <SectionHeading step={5} total={7} label={<>Choose Your <em style={{ color: ACCENT, fontStyle: "italic" }}>Caterers</em></>} sub="Optional — skip if you'd like us to recommend one." />
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(340px, 1fr))", gap: 32 }}>
-        {caterers.map((c, idx) => {
-          const selected = form.caterer === c.id;
+        {dbCaterers.map((c: any, idx: number) => {
+          const id = c._id || c.id;
+          const selected = form.caterer === id;
           const inactive = form.caterer && !selected;
+          const coverUrl = c.coverImageId?.url || c.coverImageUrl || c.coverImage;
           return (
             <motion.div
-              key={c.id}
+              key={id}
               initial={{ opacity: 0, y: 30 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true, margin: "-40px" }}
               transition={{ duration: 0.5, delay: idx * 0.07 }}
               whileHover={{ y: -8, scale: 1.02 }}
-              onClick={() => setForm({ ...form, caterer: selected ? "" : c.id })}
+              onClick={() => setForm({ ...form, caterer: selected ? "" : id })}
               style={{ position: "relative", borderRadius: 32, overflow: "hidden", cursor: "pointer", border: selected ? `4px solid ${ACCENT}` : "3px solid transparent", boxShadow: selected ? `0 20px 60px rgba(255,107,74,0.35)` : "0 8px 30px rgba(0,0,0,0.08)", transition: "all 0.4s ease", aspectRatio: "16/10", opacity: inactive ? 0.4 : 1 }}
             >
-              <img src={c.coverImage} alt={c.name} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+              <img src={coverUrl} alt={c.name} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
               <div style={{ position: "absolute", inset: 0, background: selected ? "rgba(255,107,74,0.4)" : "linear-gradient(to top, rgba(0,0,0,0.85) 0%, transparent 70%)" }} />
               {selected && <div style={{ position: "absolute", top: 16, right: 16, background: ACCENT, borderRadius: "50%", width: 36, height: 36, display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 4px 12px rgba(0,0,0,0.2)" }}><Check size={18} color="white" strokeWidth={4} /></div>}
               <div style={{ position: "absolute", bottom: 0, padding: "28px 32px" }}>
-                <p style={{ fontFamily: "var(--font-montserrat)", fontWeight: 700, fontSize: "0.65rem", letterSpacing: "0.15em", color: ACCENT, textTransform: "uppercase", marginBottom: 6 }}>{c.tag}</p>
+                <p style={{ fontFamily: "var(--font-montserrat)", fontWeight: 700, fontSize: "0.65rem", letterSpacing: "0.15em", color: ACCENT, textTransform: "uppercase", marginBottom: 6 }}>{c.categories?.join(", ") || c.tag || "Culinary Experts"}</p>
                 <h4 style={{ fontFamily: "var(--font-playfair)", fontWeight: 700, fontSize: "1.3rem", color: "white" }}>{c.name}</h4>
               </div>
             </motion.div>
@@ -658,30 +692,32 @@ function StepFive({ form, setForm, onNext }: { form: FormData; setForm: (f: Form
 }
 
 /* ─── Step 6: Artist ─── */
-function StepSixArtist({ form, setForm, onNext }: { form: FormData; setForm: (f: FormData) => void; onNext: () => void }) {
+function StepSixArtist({ form, setForm, onNext, dbArtists }: { form: FormData; setForm: (f: FormData) => void; onNext: () => void; dbArtists: any[] }) {
   return (
     <div>
       <SectionHeading step={6} total={7} label={<>Select Your <em style={{ color: ACCENT, fontStyle: "italic" }}>Entertainment</em></>} sub="Optional — skip if you'd like us to recommend an artist." />
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(340px, 1fr))", gap: 32 }}>
-        {artists.map((a, idx) => {
-          const selected = form.artist === a.id;
+        {dbArtists.map((a: any, idx: number) => {
+          const id = a._id || a.id;
+          const selected = form.artist === id;
           const inactive = form.artist && !selected;
+          const coverUrl = a.coverImageId?.url || a.coverImageUrl || a.coverImage;
           return (
             <motion.div
-              key={a.id}
+              key={id}
               initial={{ opacity: 0, y: 30 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true, margin: "-40px" }}
               transition={{ duration: 0.5, delay: idx * 0.07 }}
               whileHover={{ y: -8, scale: 1.02 }}
-              onClick={() => setForm({ ...form, artist: selected ? "" : a.id })}
+              onClick={() => setForm({ ...form, artist: selected ? "" : id })}
               style={{ position: "relative", borderRadius: 32, overflow: "hidden", cursor: "pointer", border: selected ? `4px solid ${ACCENT}` : "3px solid transparent", boxShadow: selected ? `0 20px 60px rgba(255,107,74,0.35)` : "0 8px 30px rgba(0,0,0,0.08)", transition: "all 0.4s ease", aspectRatio: "16/10", opacity: inactive ? 0.4 : 1 }}
             >
-              <img src={a.coverImage} alt={a.name} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+              <img src={coverUrl} alt={a.name} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
               <div style={{ position: "absolute", inset: 0, background: selected ? "rgba(255,107,74,0.4)" : "linear-gradient(to top, rgba(0,0,0,0.85) 0%, transparent 70%)" }} />
               {selected && <div style={{ position: "absolute", top: 16, right: 16, background: ACCENT, borderRadius: "50%", width: 36, height: 36, display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 4px 12px rgba(0,0,0,0.2)" }}><Check size={18} color="white" strokeWidth={4} /></div>}
               <div style={{ position: "absolute", bottom: 0, padding: "28px 32px" }}>
-                <p style={{ fontFamily: "var(--font-montserrat)", fontWeight: 700, fontSize: "0.65rem", letterSpacing: "0.15em", color: ACCENT, textTransform: "uppercase", marginBottom: 6 }}>{a.tag}</p>
+                <p style={{ fontFamily: "var(--font-montserrat)", fontWeight: 700, fontSize: "0.65rem", letterSpacing: "0.15em", color: ACCENT, textTransform: "uppercase", marginBottom: 6 }}>{a.category || a.tag || "Elite Entertainment"}</p>
                 <h4 style={{ fontFamily: "var(--font-playfair)", fontWeight: 700, fontSize: "1.3rem", color: "white" }}>{a.name}</h4>
               </div>
             </motion.div>
@@ -700,91 +736,92 @@ function StepSixArtist({ form, setForm, onNext }: { form: FormData; setForm: (f:
   );
 }
 
-/* ─── Step 7: Confirm ─── */
+/* ─── Step 7: Confirm (Bento Style) ─── */
 function StepSeven({ form, selectedService, selectedPackage, selectedVenue, selectedCaterer, selectedArtist, setIsSubmitted }: { 
   form: FormData; 
-  selectedService: typeof services[0] | undefined; 
-  selectedPackage: typeof packages[0] | undefined; 
-  selectedVenue: typeof venues[0] | undefined;
-  selectedCaterer: typeof caterers[0] | undefined;
-  selectedArtist: typeof artists[0] | undefined;
+  selectedService: any; 
+  selectedPackage: any; 
+  selectedVenue: any;
+  selectedCaterer: any;
+  selectedArtist: any;
   setIsSubmitted: (v: boolean) => void;
 }) {
+  const summaryItems = [
+    { type: 'service', data: selectedService, label: "Your Event", span: "md:col-span-1" },
+    { type: 'artist', data: selectedArtist, label: "Featured Artist", span: "md:col-span-1" },
+    { type: 'venue', data: selectedVenue, label: "Selected Venue", span: "md:col-span-1" },
+    { type: 'caterer', data: selectedCaterer, label: "Royal Caterer", span: "md:col-span-1" },
+  ].filter(item => item.data);
+
   return (
     <div>
       <SectionHeading step={7} total={7} label={<>Review your <em style={{ color: ACCENT, fontStyle: "italic" }}>booking</em></>} sub="Everything looking good? Let's make it happen." />
-      <div style={{ display: "grid", gridTemplateColumns: "1.1fr 1fr", gap: 40, alignItems: "start" }}>
-        <div style={{ background: "#fff", borderRadius: 36, padding: "48px", boxShadow: "0 10px 50px rgba(0,0,0,0.06)", border: "1px solid rgba(0,0,0,0.05)" }}>
-          <h3 style={{ fontFamily: "var(--font-montserrat)", fontWeight: 800, fontSize: "0.65rem", letterSpacing: "0.18em", textTransform: "uppercase", color: "rgba(0,0,0,0.55)", marginBottom: 24 }}>Your Details</h3>
-          <div style={{ display: "flex", flexDirection: "column" }}>
-            {[
-              { label: "Name", value: form.name || "—" },
-              { label: "Phone", value: form.phone || "—" },
-              ...(form.email ? [{ label: "Email", value: form.email }] : []),
-              { label: "Budget", value: form.budget >= 100000 ? `₹${(form.budget / 100000).toFixed(1)} Lakhs` : `₹${(form.budget / 1000).toFixed(0)}k` },
-              { label: "Guests", value: form.guests || "—" },
-              { label: "Event Type", value: selectedService?.name || "—" },
-              { label: "Package", value: selectedPackage?.name || "—" },
-              { label: "Venue", value: selectedVenue?.name || "TBD by RDC" },
-              { label: "Caterer", value: selectedCaterer?.name || "TBD by RDC" },
-              { label: "Artist", value: selectedArtist?.name || "TBD by RDC" },
-            ].map((row, i) => (
-              <div key={row.label} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "16px 0", borderBottom: "1px solid rgba(0,0,0,0.05)" }}>
-                <span style={{ fontFamily: "var(--font-montserrat)", fontWeight: 700, fontSize: "0.65rem", letterSpacing: "0.14em", textTransform: "uppercase", color: "rgba(0,0,0,0.55)" }}>{row.label}</span>
-                <span style={{ fontFamily: "var(--font-playfair)", fontWeight: 700, fontSize: "1.05rem", color: FG, textAlign: "right" }}>{row.value}</span>
-              </div>
-            ))}
-            
-            {form.notes && (
-              <div style={{ padding: "24px 0", borderBottom: "none" }}>
-                <span style={{ fontFamily: "var(--font-montserrat)", fontWeight: 700, fontSize: "0.65rem", letterSpacing: "0.14em", textTransform: "uppercase", color: "rgba(0,0,0,0.55)", display: "block", marginBottom: 12 }}>Event Vision / Notes</span>
-                <p style={{ fontFamily: "var(--font-playfair)", fontWeight: 500, fontSize: "1rem", color: FG, lineHeight: 1.6, background: "rgba(0,0,0,0.02)", padding: 20, borderRadius: 16 }}>
-                  {form.notes}
-                </p>
-              </div>
-            )}
+      
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-6 items-stretch">
+        {/* Main Details Card — Large Bento Piece */}
+        <div className="md:col-span-2 md:row-span-2 bg-white rounded-[40px] p-10 shadow-[0_10px_50px_rgba(0,0,0,0.06)] border border-black/5 flex flex-col justify-between">
+          <div>
+            <h3 style={{ fontFamily: "var(--font-montserrat)", fontWeight: 800, fontSize: "0.65rem", letterSpacing: "0.18em", textTransform: "uppercase", color: "rgba(0,0,0,0.55)", marginBottom: 32 }}>Your Details</h3>
+            <div style={{ display: "flex", flexDirection: "column" }}>
+              {[
+                { label: "Name", value: form.name || "—" },
+                { label: "Phone", value: form.phone || "—" },
+                ...(form.email ? [{ label: "Email", value: form.email }] : []),
+                { label: "Budget", value: form.budget >= 100000 ? `₹${(form.budget / 100000).toFixed(1)} Lakhs` : `₹${(form.budget / 1000).toFixed(0)}k` },
+                { label: "Guests", value: form.guests || "—" },
+                { label: "Event Type", value: selectedService?.name || "—" },
+              ].map((row, i) => (
+                <div key={row.label} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "16px 0", borderBottom: "1px solid rgba(0,0,0,0.05)" }}>
+                  <span style={{ fontFamily: "var(--font-montserrat)", fontWeight: 700, fontSize: "0.65rem", letterSpacing: "0.14em", textTransform: "uppercase", color: "rgba(0,0,0,0.55)" }}>{row.label}</span>
+                  <span style={{ fontFamily: "var(--font-playfair)", fontWeight: 700, fontSize: "1.05rem", color: FG }}>{row.value}</span>
+                </div>
+              ))}
+            </div>
           </div>
 
-          <div style={{ marginTop: 40, padding: "28px 32px", background: "rgba(0,0,0,0.02)", borderRadius: 24, border: "1px dashed rgba(0,0,0,0.1)" }}>
-            <p style={{ fontFamily: "var(--font-playfair)", fontStyle: "italic", fontSize: "0.9rem", color: "rgba(0,0,0,0.5)", lineHeight: 1.6, textAlign: "center" }}>
-              "We're excited to help you plan this {selectedService?.name.toLowerCase() || "event"}. Our team will review these details and get back to you within 24 hours to begin the royal journey."
-            </p>
-            <div style={{ display: "flex", justifyContent: "center", marginTop: 20 }}>
-              <span style={{ fontFamily: "var(--font-montserrat)", fontWeight: 800, fontSize: "0.55rem", letterSpacing: "0.2em", textTransform: "uppercase", color: ACCENT, border: `1px solid ${ACCENT}`, padding: "6px 16px", borderRadius: 999 }}>
-                Premium Booking Tier
-              </span>
+          {form.notes && (
+            <div style={{ marginTop: 32 }}>
+              <span style={{ fontFamily: "var(--font-montserrat)", fontWeight: 700, fontSize: "0.65rem", letterSpacing: "0.14em", textTransform: "uppercase", color: "rgba(0,0,0,0.55)", display: "block", marginBottom: 12 }}>Event Vision</span>
+              <p style={{ fontFamily: "var(--font-playfair)", fontWeight: 500, fontSize: "0.95rem", color: FG, lineHeight: 1.6, background: "rgba(0,0,0,0.03)", padding: 20, borderRadius: 20 }}>
+                {form.notes}
+              </p>
             </div>
+          )}
+        </div>
+
+        {/* Dynamic Bento Cards */}
+        {summaryItems.map((item, idx) => (
+          <div key={idx} className={`${item.span} relative rounded-[32px] overflow-hidden shadow-lg group`} style={{ minHeight: 200 }}>
+            <img 
+              src={item.type === 'service' ? item.data.coverImage : (item.data.coverImageId?.url || item.data.coverImageUrl || item.data.coverImage)} 
+              alt={item.data.name} 
+              style={{ width: "100%", height: "100%", objectFit: "cover" }} 
+            />
+            <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent" />
+            <div className="absolute inset-0 p-6 flex flex-col justify-end">
+              <p style={{ fontFamily: "var(--font-montserrat)", fontWeight: 700, fontSize: "0.55rem", letterSpacing: "0.15em", color: ACCENT, textTransform: "uppercase", marginBottom: 4 }}>{item.label}</p>
+              <h4 style={{ fontFamily: "var(--font-playfair)", fontWeight: 800, fontSize: "1.1rem", color: "white" }}>{item.data.name}</h4>
+            </div>
+          </div>
+        ))}
+
+        {/* Package Bento Piece — Wide Bottom */}
+        <div className="md:col-span-2 bg-black rounded-[40px] p-8 flex items-center justify-between shadow-2xl">
+          <div>
+            <p style={{ fontFamily: "var(--font-montserrat)", fontWeight: 700, fontSize: "0.6rem", letterSpacing: "0.15em", color: "rgba(255,255,255,0.4)", textTransform: "uppercase", marginBottom: 8 }}>Selected Package</p>
+            <h4 style={{ fontFamily: "var(--font-playfair)", fontWeight: 800, fontSize: "1.8rem", color: "white" }}>{selectedPackage?.name || "None selected"}</h4>
+          </div>
+          <div className="text-right">
+             <p style={{ fontFamily: "var(--font-playfair)", fontWeight: 700, fontSize: "1.5rem", color: ACCENT }}>{selectedPackage?.price}</p>
+             <span className="text-[10px] font-bold text-white/30 uppercase tracking-widest">Premium Tier</span>
           </div>
         </div>
 
-        <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
-          {selectedService && (
-            <div style={{ borderRadius: 32, overflow: "hidden", position: "relative", minHeight: 220, flex: 1, boxShadow: "0 15px 40px rgba(0,0,0,0.12)" }}>
-              <img src={selectedService.coverImage} alt={selectedService.name} style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
-              <div style={{ position: "absolute", inset: 0, background: "linear-gradient(to top, rgba(0,0,0,0.9), transparent 70%)" }} />
-              <div style={{ position: "absolute", bottom: 0, padding: "28px 32px" }}>
-                <p style={{ fontFamily: "var(--font-montserrat)", fontWeight: 700, fontSize: "0.65rem", letterSpacing: "0.15em", color: ACCENT, textTransform: "uppercase", marginBottom: 8 }}>Your Event</p>
-                <h3 style={{ fontFamily: "var(--font-playfair)", fontWeight: 800, fontSize: "1.6rem", color: "white" }}>{selectedService.name}</h3>
-              </div>
-            </div>
-          )}
-
-          {selectedArtist && (
-            <div style={{ borderRadius: 32, overflow: "hidden", position: "relative", minHeight: 180, flex: 1, boxShadow: "0 15px 40px rgba(0,0,0,0.12)" }}>
-              <img src={selectedArtist.coverImage} alt={selectedArtist.name} style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
-              <div style={{ position: "absolute", inset: 0, background: "linear-gradient(to top, rgba(0,0,0,0.9), transparent 70%)" }} />
-              <div style={{ position: "absolute", bottom: 0, padding: "24px 32px" }}>
-                <p style={{ fontFamily: "var(--font-montserrat)", fontWeight: 700, fontSize: "0.65rem", letterSpacing: "0.15em", color: ACCENT, textTransform: "uppercase", marginBottom: 6 }}>Featured Artist</p>
-                <h4 style={{ fontFamily: "var(--font-playfair)", fontWeight: 800, fontSize: "1.3rem", color: "white" }}>{selectedArtist.name}</h4>
-              </div>
-            </div>
-          )}
-
-          <div style={{ background: FG, borderRadius: 32, padding: "36px 40px", boxShadow: "0 20px 50px rgba(0,0,0,0.25)" }}>
-            <p style={{ fontFamily: "var(--font-montserrat)", fontWeight: 700, fontSize: "0.65rem", letterSpacing: "0.15em", color: "rgba(255,255,255,0.4)", textTransform: "uppercase", marginBottom: 12 }}>Selected Package</p>
-            <h4 style={{ fontFamily: "var(--font-playfair)", fontWeight: 800, fontSize: "1.8rem", color: "white", marginBottom: 8 }}>{selectedPackage?.name || "None selected"}</h4>
-            <p style={{ fontFamily: "var(--font-playfair)", fontWeight: 700, fontSize: "1.3rem", color: ACCENT }}>{selectedPackage?.price}</p>
-          </div>
+        {/* Closing Quote Bento Piece */}
+        <div className="md:col-span-2 bg-[#FF6B4A]/5 rounded-[40px] p-8 border border-[#FF6B4A]/10 flex items-center justify-center text-center">
+           <p style={{ fontFamily: "var(--font-playfair)", fontStyle: "italic", fontSize: "1.05rem", color: "rgba(0,0,0,0.6)", lineHeight: 1.6, maxWidth: 400 }}>
+              "We're excited to help you plan this {selectedService?.name.toLowerCase() || "event"}. Our team will review these details and begin the royal journey."
+           </p>
         </div>
       </div>
 
@@ -792,9 +829,30 @@ function StepSeven({ form, selectedService, selectedPackage, selectedVenue, sele
         <motion.button
           whileHover={{ scale: 1.04, boxShadow: `0 25px 70px rgba(255,107,74,0.55)` }}
           whileTap={{ scale: 0.97 }}
-          onClick={() => {
-            window.scrollTo({ top: 0, behavior: "smooth" });
-            setTimeout(() => setIsSubmitted(true), 500);
+          onClick={async () => {
+            try {
+              const res = await fetch("/api/admin/bookings", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  ...form,
+                  service: selectedService?.name || form.service,
+                  package: selectedPackage?.name || form.package,
+                  venue: selectedVenue?.name || form.venue,
+                  caterer: selectedCaterer?.name || form.caterer,
+                  artist: selectedArtist?.name || form.artist,
+                })
+              });
+              if (res.ok) {
+                window.scrollTo({ top: 0, behavior: "smooth" });
+                setTimeout(() => setIsSubmitted(true), 500);
+              } else {
+                alert("Failed to send request. Please try again.");
+              }
+            } catch (e) {
+              console.error(e);
+              alert("Something went wrong. Please check your connection.");
+            }
           }}
           style={{ display: "flex", alignItems: "center", gap: 12, background: ACCENT, border: "none", borderRadius: 999, padding: "26px 88px", fontFamily: "var(--font-montserrat)", fontWeight: 800, fontSize: "1.15rem", cursor: "pointer", color: "white", letterSpacing: "0.1em", textTransform: "uppercase", boxShadow: `0 16px 48px rgba(255,107,74,0.45)`, transition: "all 0.3s ease" }}
         >
@@ -804,3 +862,4 @@ function StepSeven({ form, selectedService, selectedPackage, selectedVenue, sele
     </div>
   );
 }
+

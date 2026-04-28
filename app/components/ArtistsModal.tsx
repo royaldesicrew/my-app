@@ -51,9 +51,13 @@ const ALL_ARTISTS: Artist[] = [
 ];
 
 export default function ArtistsModal({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) {
+  const [artists, setArtists] = React.useState<any[]>([]);
+  const [loading, setLoading] = React.useState(true);
+
   React.useEffect(() => {
     if (isOpen) {
       document.body.style.overflow = "hidden";
+      fetchArtists();
     } else {
       document.body.style.overflow = "unset";
     }
@@ -61,6 +65,18 @@ export default function ArtistsModal({ isOpen, onClose }: { isOpen: boolean; onC
       document.body.style.overflow = "unset";
     };
   }, [isOpen]);
+
+  const fetchArtists = async () => {
+    try {
+      const res = await fetch("/api/admin/artists");
+      const data = await res.json();
+      setArtists(Array.isArray(data) ? data : []);
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     <AnimatePresence>
@@ -112,31 +128,37 @@ export default function ArtistsModal({ isOpen, onClose }: { isOpen: boolean; onC
               <h2 style={{ fontFamily: "var(--font-playfair)", fontWeight: 900, fontSize: "clamp(40px,6vw,72px)", color: "#fff", lineHeight: 1 }}>Our Artists</h2>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-              {ALL_ARTISTS.map((a, i) => (
-                <motion.div
-                  key={a.name}
-                  initial={{ opacity: 0, y: 30 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: i * 0.05 }}
-                  className="group"
-                  style={{ cursor: "pointer" }}
-                >
-                  <div style={{ borderRadius: 24, overflow: "hidden", aspectRatio: "16/10", marginBottom: 20, position: "relative" }}>
-                    <img
-                      src={a.img}
-                      alt={a.name}
-                      style={{ width: "100%", height: "100%", objectFit: "cover", transition: "transform 1s cubic-bezier(0.16,1,0.3,1)" }}
-                      className="group-hover:scale-110"
-                    />
-                    <div style={{ position: "absolute", inset: 0, background: "linear-gradient(to top, rgba(13,13,13,0.6) 0%, transparent 100%)" }} />
-                  </div>
-                  <p style={{ fontFamily: "var(--font-montserrat)", fontWeight: 700, fontSize: "0.6rem", letterSpacing: "0.15em", color: "#FF6B4A", textTransform: "uppercase", marginBottom: 8 }}>{a.tag}</p>
-                  <h3 style={{ fontFamily: "var(--font-playfair)", fontWeight: 700, fontSize: "1.4rem", color: "#fff", marginBottom: 12 }}>{a.name}</h3>
-                  <p style={{ fontFamily: "var(--font-montserrat)", fontSize: "0.85rem", color: "rgba(255,255,255,0.5)", lineHeight: 1.6 }}>{a.desc}</p>
-                </motion.div>
-              ))}
-            </div>
+            {loading ? (
+              <div className="flex items-center justify-center py-20">
+                <div className="w-8 h-8 border-4 border-[#FF6B4A] border-t-transparent rounded-full animate-spin" />
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                {artists.map((a, i) => (
+                  <motion.div
+                    key={a._id}
+                    initial={{ opacity: 0, y: 30 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: i * 0.05 }}
+                    className="group"
+                    style={{ cursor: "pointer" }}
+                  >
+                    <div style={{ borderRadius: 24, overflow: "hidden", aspectRatio: "16/10", marginBottom: 20, position: "relative" }}>
+                      <img
+                        src={a.coverImageId?.url || "https://images.unsplash.com/photo-1514320298574-2c1287270d7a?q=80&w=2070&auto=format&fit=crop"}
+                        alt={a.name}
+                        style={{ width: "100%", height: "100%", objectFit: "cover", transition: "transform 1s cubic-bezier(0.16,1,0.3,1)" }}
+                        className="group-hover:scale-110"
+                      />
+                      <div style={{ position: "absolute", inset: 0, background: "linear-gradient(to top, rgba(13,13,13,0.6) 0%, transparent 100%)" }} />
+                    </div>
+                    <p style={{ fontFamily: "var(--font-montserrat)", fontWeight: 700, fontSize: "0.6rem", letterSpacing: "0.15em", color: "#FF6B4A", textTransform: "uppercase", marginBottom: 8 }}>{a.category}</p>
+                    <h3 style={{ fontFamily: "var(--font-playfair)", fontWeight: 700, fontSize: "1.4rem", color: "#fff", marginBottom: 12 }}>{a.name}</h3>
+                    <p style={{ fontFamily: "var(--font-montserrat)", fontSize: "0.85rem", color: "rgba(255,255,255,0.5)", lineHeight: 1.6 }}>{a.bio || "No biography available."}</p>
+                  </motion.div>
+                ))}
+              </div>
+            )}
           </div>
         </motion.div>
       )}

@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import gsap from "gsap";
 import Link from "next/link";
+import CatalogsModal from "./CatalogsModal";
 
 export default function Hero() {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -12,6 +13,7 @@ export default function Hero() {
   const buttonsRef = useRef<HTMLDivElement>(null);
   const badgeRef = useRef<HTMLDivElement>(null);
   const scrollHintRef = useRef<HTMLDivElement>(null);
+  const [isCatalogsModalOpen, setIsCatalogsModalOpen] = useState(false);
 
   useEffect(() => {
     const ctx = gsap.context(() => {
@@ -319,9 +321,8 @@ export default function Hero() {
               <path d="M5 12h14M12 5l7 7-7 7" />
             </svg>
           </a>
-          <Link
-            href="/catalog.pdf"
-            download
+          <button
+            onClick={() => setIsCatalogsModalOpen(true)}
             style={{
               display: "inline-flex",
               alignItems: "center",
@@ -338,16 +339,17 @@ export default function Hero() {
               letterSpacing: "0.12em",
               textTransform: "uppercase",
               textDecoration: "none",
+              cursor: "pointer",
               transition: "all 0.35s cubic-bezier(0.16,1,0.3,1)",
             }}
             onMouseEnter={(e) => {
-              const el = e.currentTarget as HTMLAnchorElement;
+              const el = e.currentTarget as HTMLButtonElement;
               el.style.borderColor = "var(--accent)";
               el.style.color = "var(--accent)";
               el.style.transform = "translateY(-2px)";
             }}
             onMouseLeave={(e) => {
-              const el = e.currentTarget as HTMLAnchorElement;
+              const el = e.currentTarget as HTMLButtonElement;
               el.style.borderColor = "rgba(13,13,13,0.15)";
               el.style.color = "#0D0D0D";
               el.style.transform = "translateY(0)";
@@ -357,8 +359,10 @@ export default function Hero() {
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
               <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v4m4-10l5 5 5-5m-5 5V3" />
             </svg>
-          </Link>
+          </button>
         </div>
+        
+        <CatalogsModal isOpen={isCatalogsModalOpen} onClose={() => setIsCatalogsModalOpen(false)} />
 
         {/* Stats strip */}
         <div

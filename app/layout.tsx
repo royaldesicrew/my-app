@@ -35,7 +35,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className={cn("font-sans", geist.variable)}>
+    <html lang="en" className={cn("font-sans", geist.variable)} suppressHydrationWarning>
       <body className={`${playfair.variable} ${montserrat.variable} ${caveat.variable} font-body antialiased`}>
         <SmoothScroll>
           {children}

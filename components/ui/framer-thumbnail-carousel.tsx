@@ -73,11 +73,18 @@ export function FramerThumbnailCarousel({ items }: FramerThumbnailCarouselProps)
             style={{ x }}
           >
             {items.map((item, i) => (
-              <div key={item.id} className='shrink-0 w-full h-[350px] md:h-[450px] lg:h-[500px]'>
+              <div key={item.id} className='shrink-0 w-full h-[350px] md:h-[450px] lg:h-[500px] relative overflow-hidden'>
+                {/* Blurred Background */}
+                <img
+                  src={item.url}
+                  alt=""
+                  className='absolute inset-0 w-full h-full object-cover blur-2xl opacity-40 scale-110 pointer-events-none'
+                />
+                
                 <img
                   src={item.url}
                   alt={item.title || `Gallery image ${i}`}
-                  className='w-full h-full object-cover select-none pointer-events-none'
+                  className='relative w-full h-full object-contain select-none pointer-events-none z-10'
                   draggable={false}
                 />
               </div>
@@ -116,7 +123,7 @@ export function FramerThumbnailCarousel({ items }: FramerThumbnailCarouselProps)
           </motion.button>
 
           {/* Title Overlay */}
-          <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, padding: '40px', background: 'linear-gradient(transparent, rgba(0,0,0,0.8))', pointerEvents: 'none' }}>
+          <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, padding: '60px 40px 30px', background: 'linear-gradient(to top, rgba(0,0,0,0.95) 0%, rgba(0,0,0,0.4) 50%, transparent 100%)', pointerEvents: 'none', zIndex: 20 }}>
              <motion.h4 
                key={index}
                initial={{ opacity: 0, y: 10 }}

@@ -1,228 +1,149 @@
 "use client";
-import { useState } from "react";
-import { motion, AnimatePresence } from "framer-motion";
-import { Upload, FileCheck, AlertCircle, Loader2, ChevronRight, Image as ImageIcon, Video, X } from "lucide-react";
+import { useState, useEffect } from "react";
+import { MapPin, Utensils, Image as ImageIcon, FolderSearch, LayoutDashboard, ArrowUpRight, Loader2, Mic2, CalendarCheck, BookOpen } from "lucide-react";
+import Link from "next/link";
 
-export default function AdminUploadPanel() {
-  const [url, setUrl] = useState("");
-  const [category, setCategory] = useState("Gallery");
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
-  const [dragActive, setDragActive] = useState(false);
+interface Stats {
+  venues: number;
+  caterers: number;
+  media: number;
+  galleryItems: number;
+  categories: number;
+  artists: number;
+  bookings: number;
+  blogs: number;
+}
 
-  const handleUpload = async (file: File) => {
-    if (!file) return;
+export default function AdminDashboard() {
+  const [stats, setStats] = useState<Stats | null>(null);
+  const [loading, setLoading] = useState(true);
 
-    setLoading(true);
-    setError("");
-    setUrl("");
+  useEffect(() => { fetchStats(); }, []);
 
-    const formData = new FormData();
-    formData.append("file", file);
-    formData.append("category", category);
-
+  const fetchStats = async () => {
     try {
-      const res = await fetch("/api/upload", {
-        method: "POST",
-        body: formData,
-      });
-      const data = await res.json();
-      
-      if (!res.ok) {
-        throw new Error(data.error || "Upload failed");
-      }
-
-      setUrl(data.url);
-    } catch (err: any) {
-      setError(err.message);
+      const res = await fetch("/api/admin/stats");
+      setStats(await res.json());
+    } catch (e) {
+      console.error(e);
     } finally {
       setLoading(false);
     }
   };
 
-  const handleFormSubmit = (e: any) => {
-    e.preventDefault();
-    const file = e.target.file.files[0];
-    handleUpload(file);
-  };
+  const cards = [
+    { label: "Total Venues", value: stats?.venues ?? 0, icon: MapPin, href: "/admin/venues", color: "#FF6B4A", bg: "rgba(255,107,74,0.08)" },
+    { label: "Catering Partners", value: stats?.caterers ?? 0, icon: Utensils, href: "/admin/caterers", color: "#a855f7", bg: "rgba(168,85,247,0.08)" },
+    { label: "Gallery Items", value: stats?.galleryItems ?? 0, icon: ImageIcon, href: "/admin/gallery", color: "#3b82f6", bg: "rgba(59,130,246,0.08)" },
+    { label: "Elite Artists", value: stats?.artists ?? 0, icon: Mic2, href: "/admin/artists", color: "#f59e0b", bg: "rgba(245,158,11,0.08)" },
+    { label: "Blog Posts", value: stats?.blogs ?? 0, icon: BookOpen, href: "/admin/blogs", color: "#8b5cf6", bg: "rgba(139,92,246,0.08)" },
+    { label: "New Bookings", value: stats?.bookings ?? 0, icon: CalendarCheck, href: "/admin/bookings", color: "#ec4899", bg: "rgba(236,72,153,0.08)" },
+    { label: "Media Files", value: stats?.media ?? 0, icon: FolderSearch, href: "/admin/media", color: "#10b981", bg: "rgba(16,185,129,0.08)" },
+  ];
+
+  if (loading) {
+    return (
+      <div className="admin-spinner-wrap">
+        <Loader2 className="h-7 w-7 animate-spin" style={{ color: "var(--admin-accent)" }} />
+      </div>
+    );
+  }
 
   return (
-    <div className="min-h-screen bg-[#0D0D0D] text-white selection:bg-[#FF6B4A]/30 flex flex-col items-center justify-center p-6 sm:p-12 relative overflow-hidden">
-      {/* Background Orbs */}
-      <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-[#FF6B4A]/10 blur-[120px] rounded-full pointer-events-none" />
-      <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-blue-600/10 blur-[120px] rounded-full pointer-events-none" />
-
-      <motion.div 
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="w-full max-w-2xl z-10"
-      >
-        <div className="text-center mb-12">
-          <motion.div
-            initial={{ opacity: 0, scale: 0.9 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ delay: 0.1 }}
-            className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/5 border border-white/10 mb-6"
-          >
-            <div className="w-2 h-2 rounded-full bg-[#FF6B4A] animate-pulse" />
-            <span className="text-[10px] font-bold tracking-[0.2em] uppercase text-white/60">Admin Command Center</span>
-          </motion.div>
-          
-          <h1 className="text-5xl sm:text-6xl font-black mb-6 tracking-tighter">
-            Elevate Your <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#FF6B4A] to-[#ff9d85]">Gallery</span>
-          </h1>
-          <p className="text-white/40 text-lg max-w-lg mx-auto font-medium">
-            Seamlessly upload premium content for Venues, Caterers, and the Royal Gallery.
-          </p>
+    <div>
+      <div className="admin-page-header">
+        <div>
+          <h1 className="admin-page-title">Dashboard Overview</h1>
+          <p className="admin-page-subtitle">Welcome back — here's the current state of your platform.</p>
         </div>
+      </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-1 gap-8">
-          {/* Main Upload Area */}
-          <div className="relative group">
-            <div className="absolute -inset-0.5 bg-gradient-to-r from-[#FF6B4A] to-blue-600 rounded-3xl blur opacity-20 group-hover:opacity-40 transition duration-1000 group-hover:duration-200"></div>
-            
-            <div className="relative bg-[#161616]/80 backdrop-blur-xl border border-white/10 p-8 rounded-3xl shadow-2xl">
-              <form onSubmit={handleFormSubmit} className="space-y-8">
-                {/* Category Selection */}
-                <div className="grid grid-cols-3 gap-3">
-                  {['Venues', 'Caterer', 'Gallery'].map((cat) => (
-                    <button
-                      key={cat}
-                      type="button"
-                      onClick={() => setCategory(cat)}
-                      className={`py-3 px-4 rounded-xl text-sm font-bold transition-all border ${
-                        category === cat 
-                        ? 'bg-[#FF6B4A] border-[#FF6B4A] text-white shadow-[0_0_20px_rgba(255,107,74,0.3)]' 
-                        : 'bg-white/5 border-white/5 text-white/40 hover:bg-white/10'
-                      }`}
-                    >
-                      {cat}
-                    </button>
-                  ))}
+      {/* Stat Cards */}
+      <div className="admin-stat-grid">
+        {cards.map((card) => (
+          <Link key={card.label} href={card.href} className="admin-stat-card">
+            <ArrowUpRight className="admin-stat-arrow" size={18} />
+            <div className="admin-stat-icon" style={{ background: card.bg }}>
+              <card.icon size={18} style={{ color: card.color }} />
+            </div>
+            <p className="admin-stat-label">{card.label}</p>
+            <p className="admin-stat-value">{card.value}</p>
+          </Link>
+        ))}
+      </div>
+
+      {/* Bottom Section */}
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "20px" }}>
+        {/* Quick Actions */}
+        <div className="admin-card">
+          <div className="admin-card-body">
+            <p className="admin-section-title">Quick Actions</p>
+            <div className="admin-quick-grid">
+              <Link href="/admin/media" className="admin-quick-card">
+                <div className="admin-stat-icon" style={{ background: "rgba(16,185,129,0.08)", marginBottom: 0 }}>
+                  <FolderSearch size={16} style={{ color: "#10b981" }} />
                 </div>
-
-                {/* Dropzone */}
-                <div 
-                  onDragOver={(e) => { e.preventDefault(); setDragActive(true); }}
-                  onDragLeave={() => setDragActive(false)}
-                  onDrop={(e) => { e.preventDefault(); setDragActive(false); if (e.dataTransfer.files[0]) handleUpload(e.dataTransfer.files[0]); }}
-                  className={`relative h-64 border-2 border-dashed rounded-2xl flex flex-col items-center justify-center transition-all cursor-pointer ${
-                    dragActive ? 'border-[#FF6B4A] bg-[#FF6B4A]/5 scale-[0.99]' : 'border-white/10 bg-white/[0.02] hover:bg-white/[0.04]'
-                  }`}
-                >
-                  <input 
-                    type="file" 
-                    name="file"
-                    id="file-upload"
-                    accept="image/*,video/*"
-                    onChange={(e) => { if (e.target.files?.[0]) handleUpload(e.target.files[0]); }}
-                    className="absolute inset-0 opacity-0 cursor-pointer"
-                  />
-                  
-                  <div className="p-4 rounded-2xl bg-white/5 mb-4 group-hover:scale-110 transition-transform">
-                    {loading ? (
-                      <Loader2 className="w-10 h-10 text-[#FF6B4A] animate-spin" />
-                    ) : (
-                      <Upload className="w-10 h-10 text-[#FF6B4A]" />
-                    )}
-                  </div>
-                  
-                  <div className="text-center">
-                    <p className="text-white/80 font-bold text-lg mb-1">
-                      {loading ? 'Uploading Magic...' : 'Drop your masterpiece here'}
-                    </p>
-                    <p className="text-white/40 text-sm font-medium">
-                      PNG, JPG, MP4 or WEBM up to 50MB
-                    </p>
-                  </div>
+                <span className="admin-quick-label">Upload Media</span>
+              </Link>
+              <Link href="/admin/gallery" className="admin-quick-card">
+                <div className="admin-stat-icon" style={{ background: "rgba(59,130,246,0.08)", marginBottom: 0 }}>
+                  <LayoutDashboard size={16} style={{ color: "#3b82f6" }} />
                 </div>
-
-                {/* Status/Error */}
-                <AnimatePresence>
-                  {error && (
-                    <motion.div 
-                      initial={{ opacity: 0, height: 0 }}
-                      animate={{ opacity: 1, height: 'auto' }}
-                      exit={{ opacity: 0, height: 0 }}
-                      className="bg-red-500/10 border border-red-500/20 p-4 rounded-xl flex items-center gap-3 text-red-500"
-                    >
-                      <AlertCircle className="w-5 h-5 flex-shrink-0" />
-                      <p className="text-sm font-bold">{error}</p>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-
-                <div className="flex items-center justify-between pt-4 border-t border-white/5">
-                  <div className="flex gap-4">
-                    <div className="flex items-center gap-2 text-white/40 text-xs font-bold uppercase tracking-widest">
-                      <ImageIcon className="w-4 h-4" /> Images
-                    </div>
-                    <div className="flex items-center gap-2 text-white/40 text-xs font-bold uppercase tracking-widest">
-                      <Video className="w-4 h-4" /> Videos
-                    </div>
-                  </div>
+                <span className="admin-quick-label">Update Gallery</span>
+              </Link>
+              <Link href="/admin/venues" className="admin-quick-card">
+                <div className="admin-stat-icon" style={{ background: "rgba(255,107,74,0.08)", marginBottom: 0 }}>
+                  <MapPin size={16} style={{ color: "#FF6B4A" }} />
                 </div>
-              </form>
+                <span className="admin-quick-label">Add Venue</span>
+              </Link>
+              <Link href="/admin/caterers" className="admin-quick-card">
+                <div className="admin-stat-icon" style={{ background: "rgba(168,85,247,0.08)", marginBottom: 0 }}>
+                  <Utensils size={16} style={{ color: "#a855f7" }} />
+                </div>
+                <span className="admin-quick-label">Add Caterer</span>
+              </Link>
+              <Link href="/admin/artists" className="admin-quick-card">
+                <div className="admin-stat-icon" style={{ background: "rgba(245,158,11,0.08)", marginBottom: 0 }}>
+                  <Mic2 size={16} style={{ color: "#f59e0b" }} />
+                </div>
+                <span className="admin-quick-label">Add Artist</span>
+              </Link>
             </div>
           </div>
         </div>
 
-        {/* Success Preview */}
-        <AnimatePresence>
-          {url && (
-            <motion.div
-              initial={{ opacity: 0, scale: 0.9, y: 20 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              className="mt-12 p-2 bg-white/5 border border-white/10 rounded-[2.5rem] relative group"
-            >
-              <div className="relative rounded-[2rem] overflow-hidden bg-black aspect-video sm:aspect-auto">
-                {url.match(/\.(mp4|webm|ogg)$/i) ? (
-                  <video src={url} controls className="w-full h-full max-h-[500px] object-cover" />
-                ) : (
-                  <img src={url} alt="Uploaded content" className="w-full h-full max-h-[500px] object-cover" />
-                )}
-                
-                <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent pointer-events-none" />
-                
-                <div className="absolute bottom-6 left-6 right-6 flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className="p-2 rounded-lg bg-green-500 shadow-[0_0_15px_rgba(34,197,94,0.5)]">
-                      <FileCheck className="w-5 h-5 text-white" />
-                    </div>
-                    <div>
-                      <p className="text-white font-bold text-sm">Upload Successful</p>
-                      <p className="text-white/40 text-xs font-medium truncate max-w-[200px]">{url}</p>
-                    </div>
-                  </div>
-                  
-                  <button 
-                    onClick={() => setUrl("")}
-                    className="p-3 rounded-full bg-white/10 backdrop-blur-md hover:bg-white/20 transition-colors"
-                  >
-                    <X className="w-5 h-5" />
-                  </button>
-                </div>
+        {/* System Status */}
+        <div className="admin-card">
+          <div className="admin-card-body">
+            <p className="admin-section-title">System Status</p>
+            <div className="admin-status-list">
+              <div className="admin-status-row">
+                <span className="admin-status-key">Database</span>
+                <span style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 11, fontWeight: 700, color: "#16a34a" }}>
+                  <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#22c55e", display: "inline-block" }} />
+                  CONNECTED
+                </span>
               </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
-
-        {/* Back Link */}
-        <motion.div 
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 0.5 }}
-          className="mt-12 text-center"
-        >
-          <a 
-            href="/" 
-            className="inline-flex items-center gap-2 text-white/40 hover:text-[#FF6B4A] font-bold text-sm transition-colors group"
-          >
-            Return to Homepage
-            <ChevronRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
-          </a>
-        </motion.div>
-      </motion.div>
+              <div className="admin-status-row">
+                <span className="admin-status-key">Cloudinary API</span>
+                <span style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 11, fontWeight: 700, color: "#16a34a" }}>
+                  <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#22c55e", display: "inline-block" }} />
+                  ACTIVE
+                </span>
+              </div>
+              <div className="admin-status-row">
+                <span className="admin-status-key">Dynamic Categories</span>
+                <span className="admin-status-val">{stats?.categories ?? 0} Total</span>
+              </div>
+              <div className="admin-status-row">
+                <span className="admin-status-key">Gallery Items</span>
+                <span className="admin-status-val">{stats?.galleryItems ?? 0} Published</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }

@@ -70,7 +70,7 @@ export default function Footer({ variant = "dark" }: FooterProps) {
           ].map(col => (
             <div key={col.title} style={{ display: "flex", flexDirection: "column", gap: 16 }}>
               <h4 style={{ fontFamily: "var(--font-montserrat)", fontWeight: 700, fontSize: "0.65rem", letterSpacing: "0.18em", textTransform: "uppercase", color: S.accent }}>{col.title}</h4>
-              {col.items.map(item => (
+              {col.items.map((item: any) => (
                 <a key={item.label} href={item.href} target={item.target} rel={item.rel} style={{ textDecoration: "none", fontFamily: "var(--font-montserrat)", fontSize: "0.9rem", color: textColor, cursor: "pointer", transition: "color 0.2s" }}>
                   {item.label}
                 </a>

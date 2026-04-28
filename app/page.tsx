@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Navbar1 from "@/components/ui/navbar-1";
 import Hero from "./components/Hero";
 import Carousel from "./components/Carousel";
@@ -22,30 +22,42 @@ const S = {
   fg: "#0D0D0D",
   bg: "#FDFBF7",
 };
-
-const venues = [
-  { id: "royal-palace", name: "The Royal Palace", tag: "Regal Elegance", coverImage: "https://images.unsplash.com/photo-1519167758481-83f550bb49b3?q=80&w=2074&auto=format&fit=crop" },
-  { id: "crystal-ballroom", name: "Crystal Ballroom", tag: "Modern Luxury", coverImage: "https://images.unsplash.com/photo-1519741497674-611481863552?q=80&w=2070&auto=format&fit=crop" },
-  { id: "garden-oasis", name: "Garden Oasis", tag: "Nature Inspired", coverImage: "https://images.unsplash.com/photo-1469334031218-e382a71b716b?q=80&w=2070&auto=format&fit=crop" },
-];
-
-const caterers = [
-  { id: "grand-feast", name: "The Grand Feast", tag: "Fine Dining", coverImage: "https://images.unsplash.com/photo-1555244162-803834f70033?q=80&w=2070&auto=format&fit=crop" },
-  { id: "spice-route", name: "Spice Route", tag: "Traditional", coverImage: "https://images.unsplash.com/photo-1547928576-a4a33237eceb?q=80&w=1780&auto=format&fit=crop" },
-  { id: "modern-bites", name: "Modern Bites", tag: "Fusion", coverImage: "https://images.unsplash.com/photo-1414235077428-338989a2e8c0?q=80&w=2070&auto=format&fit=crop" },
-];
-
-const artists = [
-  { id: "symphony-strings", name: "Symphony Strings", tag: "Live Orchestra", img: "https://images.unsplash.com/photo-1514119412350-e174d90d280e?q=80&w=2070&auto=format&fit=crop" },
-  { id: "dj-maverick", name: "DJ Maverick", tag: "Elite Entertainment", img: "https://images.unsplash.com/photo-1598387181032-a3103a2db5b3?q=80&w=2076&auto=format&fit=crop" },
-  { id: "royal-sufi-troupe", name: "Royal Sufi Troupe", tag: "Traditional Excellence", img: "https://images.unsplash.com/photo-1508700115892-45ecd05ae2ad?q=80&w=2069&auto=format&fit=crop" },
-];
+import PortfolioModal from "./components/PortfolioModal";
 
 export default function Home() {
   const [isVenuesModalOpen, setIsVenuesModalOpen] = useState(false);
   const [isCaterersModalOpen, setIsCaterersModalOpen] = useState(false);
+  const [venues, setVenues] = useState<any[]>([]);
+  const [caterers, setCaterers] = useState<any[]>([]);
+  const [artists, setArtists] = useState<any[]>([]);
+  const [selectedPartner, setSelectedPartner] = useState<any>(null);
+  const [counts, setCounts] = useState({ venues: 0, caterers: 0, artists: 0 });
   const [isArtistsModalOpen, setIsArtistsModalOpen] = useState(false);
 
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const [vRes, cRes, aRes] = await Promise.all([
+          fetch("/api/admin/venues"),
+          fetch("/api/admin/caterers"),
+          fetch("/api/admin/artists")
+        ]);
+        const [vData, cData, aData] = await Promise.all([vRes.json(), cRes.json(), aRes.json()]);
+        
+        setVenues(Array.isArray(vData) ? vData.slice(0, 3) : []);
+        setCaterers(Array.isArray(cData) ? cData.slice(0, 3) : []);
+        setArtists(Array.isArray(aData) ? aData.slice(0, 3) : []);
+        setCounts({
+          venues: Array.isArray(vData) ? vData.length : 0,
+          caterers: Array.isArray(cData) ? cData.length : 0,
+          artists: Array.isArray(aData) ? aData.length : 0
+        });
+      } catch (err) {
+        console.error("Failed to fetch home data:", err);
+      }
+    };
+    fetchData();
+  }, []);
 
   return (
     <main style={{ background: S.bg, overflowX: "hidden" }}>
@@ -130,24 +142,25 @@ export default function Home() {
               {venues.map((v, i) => {
                 return (
                   <div 
-                    key={i} 
-                    style={{ 
-                      borderRadius: 28, 
-                      overflow: "hidden", 
-                      aspectRatio: "3/4", 
-                      position: "relative", 
-                      cursor: "pointer", 
-                      boxShadow: "0 24px 60px rgba(0,0,0,0.1)",
-                      transition: "all 0.4s ease"
-                    }}
+                    key={v._id} 
+                    onClick={() => i === 2 ? setIsVenuesModalOpen(true) : setSelectedPartner(v)}
+                    style={{ borderRadius: 28, overflow: "hidden", aspectRatio: "3/4", position: "relative", cursor: "pointer", boxShadow: "0 24px 60px rgba(0,0,0,0.1)" }}
                   >
-                    <img src={v.coverImage} alt={v.name} style={{ width: "100%", height: "100%", objectFit: "cover", transition: "transform 1.2s cubic-bezier(0.16,1,0.3,1)" }}
+                    <img src={v.coverImageId?.url || v.coverImageUrl} alt={v.name} style={{ width: "100%", height: "100%", objectFit: "cover", transition: "transform 1.2s cubic-bezier(0.16,1,0.3,1)" }}
                       onMouseEnter={e => (e.currentTarget.style.transform = "scale(1.08)")}
                       onMouseLeave={e => (e.currentTarget.style.transform = "scale(1)")}
                     />
                     <div style={{ position: "absolute", inset: 0, background: "linear-gradient(to top, rgba(0,0,0,0.75) 0%, rgba(0,0,0,0.1) 50%, transparent 100%)" }} />
+                    
+                    {i === 2 && counts.venues > 3 && (
+                      <div style={{ position: "absolute", inset: 0, background: "rgba(255,107,74,0.4)", backdropFilter: "blur(4px)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", color: "#fff" }}>
+                        <span style={{ fontFamily: "var(--font-playfair)", fontSize: "3rem", fontWeight: 900 }}>+{counts.venues - 2}</span>
+                        <span style={{ fontFamily: "var(--font-montserrat)", fontWeight: 700, fontSize: "0.8rem", letterSpacing: "0.2em" }}>VIEW ALL</span>
+                      </div>
+                    )}
+
                     <div style={{ position: "absolute", bottom: 0, left: 0, padding: "32px" }}>
-                      <p style={{ fontFamily: "var(--font-montserrat)", fontWeight: 700, fontSize: "0.65rem", letterSpacing: "0.18em", color: S.accent, textTransform: "uppercase", marginBottom: 8 }}>{v.tag}</p>
+                      <p style={{ fontFamily: "var(--font-montserrat)", fontWeight: 700, fontSize: "0.65rem", letterSpacing: "0.18em", color: S.accent, textTransform: "uppercase", marginBottom: 8 }}>{v.category || v.location}</p>
                       <h3 style={{ fontFamily: "var(--font-playfair)", fontWeight: 700, fontSize: "1.5rem", color: "#fff" }}>{v.name}</h3>
                       <p style={{ fontFamily: "var(--font-montserrat)", fontWeight: 600, fontSize: "0.8rem", color: "rgba(255,255,255,0.6)", marginTop: 6, letterSpacing: "0.08em" }}>Explore Venue ↗</p>
                     </div>
@@ -189,24 +202,25 @@ export default function Home() {
               {caterers.map((c, i) => {
                 return (
                   <div 
-                    key={i} 
-                    style={{ 
-                      borderRadius: 28, 
-                      overflow: "hidden", 
-                      aspectRatio: "3/4", 
-                      position: "relative", 
-                      cursor: "pointer", 
-                      boxShadow: "0 24px 60px rgba(0,0,0,0.1)",
-                      transition: "all 0.4s ease"
-                    }}
+                    key={c._id} 
+                    onClick={() => i === 2 ? setIsCaterersModalOpen(true) : setSelectedPartner(c)}
+                    style={{ borderRadius: 28, overflow: "hidden", aspectRatio: "3/4", position: "relative", cursor: "pointer", boxShadow: "0 24px 60px rgba(0,0,0,0.1)" }}
                   >
-                    <img src={c.coverImage} alt={c.name} style={{ width: "100%", height: "100%", objectFit: "cover", transition: "transform 1.2s cubic-bezier(0.16,1,0.3,1)" }}
+                    <img src={c.coverImageId?.url || c.coverImageUrl} alt={c.name} style={{ width: "100%", height: "100%", objectFit: "cover", transition: "transform 1.2s cubic-bezier(0.16,1,0.3,1)" }}
                       onMouseEnter={e => (e.currentTarget.style.transform = "scale(1.08)")}
                       onMouseLeave={e => (e.currentTarget.style.transform = "scale(1)")}
                     />
                     <div style={{ position: "absolute", inset: 0, background: "linear-gradient(to top, rgba(0,0,0,0.75) 0%, rgba(0,0,0,0.1) 50%, transparent 100%)" }} />
+                    
+                    {i === 2 && counts.caterers > 3 && (
+                      <div style={{ position: "absolute", inset: 0, background: "rgba(255,107,74,0.4)", backdropFilter: "blur(4px)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", color: "#fff" }}>
+                        <span style={{ fontFamily: "var(--font-playfair)", fontSize: "3rem", fontWeight: 900 }}>+{counts.caterers - 2}</span>
+                        <span style={{ fontFamily: "var(--font-montserrat)", fontWeight: 700, fontSize: "0.8rem", letterSpacing: "0.2em" }}>VIEW ALL</span>
+                      </div>
+                    )}
+
                     <div style={{ position: "absolute", bottom: 0, left: 0, padding: "32px" }}>
-                      <p style={{ fontFamily: "var(--font-montserrat)", fontWeight: 700, fontSize: "0.65rem", letterSpacing: "0.18em", color: S.accent, textTransform: "uppercase", marginBottom: 8 }}>{c.tag}</p>
+                      <p style={{ fontFamily: "var(--font-montserrat)", fontWeight: 700, fontSize: "0.65rem", letterSpacing: "0.18em", color: S.accent, textTransform: "uppercase", marginBottom: 8 }}>{c.categories?.join(", ") || "Culinary Experts"}</p>
                       <h3 style={{ fontFamily: "var(--font-playfair)", fontWeight: 700, fontSize: "1.5rem", color: "#fff" }}>{c.name}</h3>
                       <p style={{ fontFamily: "var(--font-montserrat)", fontWeight: 600, fontSize: "0.8rem", color: "rgba(255,255,255,0.6)", marginTop: 6, letterSpacing: "0.08em" }}>Explore Menu ↗</p>
                     </div>
@@ -248,7 +262,7 @@ export default function Home() {
               {artists.map((a, i) => {
                 return (
                   <div 
-                    key={i} 
+                    key={a._id} 
                     style={{ 
                       borderRadius: 28, 
                       overflow: "hidden", 
@@ -258,14 +272,16 @@ export default function Home() {
                       boxShadow: "0 24px 60px rgba(0,0,0,0.1)",
                       transition: "all 0.4s ease"
                     }}
+                    onMouseEnter={e => (e.currentTarget.style.transform = "translateY(-10px)")}
+                    onMouseLeave={e => (e.currentTarget.style.transform = "translateY(0)")}
                   >
-                    <img src={a.img} alt={a.name} style={{ width: "100%", height: "100%", objectFit: "cover", transition: "transform 1.2s cubic-bezier(0.16,1,0.3,1)" }}
+                    <img src={a.coverImageId?.url || "https://images.unsplash.com/photo-1514119412350-e174d90d280e?q=80&w=2070&auto=format&fit=crop"} alt={a.name} style={{ width: "100%", height: "100%", objectFit: "cover", transition: "transform 1.2s cubic-bezier(0.16,1,0.3,1)" }}
                       onMouseEnter={e => (e.currentTarget.style.transform = "scale(1.08)")}
                       onMouseLeave={e => (e.currentTarget.style.transform = "scale(1)")}
                     />
                     <div style={{ position: "absolute", inset: 0, background: "linear-gradient(to top, rgba(0,0,0,0.75) 0%, rgba(0,0,0,0.1) 50%, transparent 100%)" }} />
                     <div style={{ position: "absolute", bottom: 0, left: 0, padding: "32px" }}>
-                      <p style={{ fontFamily: "var(--font-montserrat)", fontWeight: 700, fontSize: "0.65rem", letterSpacing: "0.18em", color: S.accent, textTransform: "uppercase", marginBottom: 8 }}>{a.tag}</p>
+                      <p style={{ fontFamily: "var(--font-montserrat)", fontWeight: 700, fontSize: "0.65rem", letterSpacing: "0.18em", color: S.accent, textTransform: "uppercase", marginBottom: 8 }}>{a.category}</p>
                       <h3 style={{ fontFamily: "var(--font-playfair)", fontWeight: 700, fontSize: "1.5rem", color: "#fff" }}>{a.name}</h3>
                       <p style={{ fontFamily: "var(--font-montserrat)", fontWeight: 600, fontSize: "0.8rem", color: "rgba(255,255,255,0.6)", marginTop: 6, letterSpacing: "0.08em" }}>Explore Talent ↗</p>
                     </div>
@@ -363,6 +379,13 @@ export default function Home() {
       <FloatingBookButton />
       <VenuesModal isOpen={isVenuesModalOpen} onClose={() => setIsVenuesModalOpen(false)} />
       <CaterersModal isOpen={isCaterersModalOpen} onClose={() => setIsCaterersModalOpen(false)} />
+      <PortfolioModal 
+        isOpen={!!selectedPartner}
+        onClose={() => setSelectedPartner(null)}
+        title={selectedPartner?.name || ""}
+        subtitle={selectedPartner?.location ? "Venue Portfolio" : "Caterer Portfolio"}
+        items={selectedPartner?.mediaCollection || []}
+      />
       <ArtistsModal isOpen={isArtistsModalOpen} onClose={() => setIsArtistsModalOpen(false)} />
     </main>
   );
